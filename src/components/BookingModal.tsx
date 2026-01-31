@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Clock, Calendar, CreditCard, Loader2, MapPin, ChevronRight } from 'lucide-react';
+import { Star, Clock, Calendar, CreditCard, Loader2, MapPin, ChevronRight, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tables } from '@/integrations/supabase/types';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type Movie = Tables<'movies'>;
 
@@ -19,8 +20,27 @@ interface BookingModalProps {
   onClose: () => void;
 }
 
-const SEAT_ROWS = ['A', 'B', 'C', 'D', 'E'];
-const SEATS_PER_ROW = 8;
+const SEAT_ROWS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+const SEATS_PER_ROW = 10;
+
+// Generate mock booked seats (simulating seats already taken)
+const generateBookedSeats = (showtimeId: string): Set<string> => {
+  const bookedSeats = new Set<string>();
+  // Use showtime ID to create deterministic "random" booked seats
+  const seed = showtimeId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  
+  SEAT_ROWS.forEach((row, rowIndex) => {
+    for (let i = 1; i <= SEATS_PER_ROW; i++) {
+      // Create a pseudo-random pattern based on seat position and showtime
+      const seatValue = (seed + rowIndex * 10 + i) % 7;
+      if (seatValue === 0 || seatValue === 3) {
+        bookedSeats.add(`${row}${i}`);
+      }
+    }
+  });
+  
+  return bookedSeats;
+};
 
 const formatTime = (time: string) => {
   const [hours, minutes] = time.split(':');
@@ -33,7 +53,8 @@ const formatTime = (time: string) => {
 const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
   const [selectedShowtime, setSelectedShowtime] = useState<Showtime | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
-  const [step, setStep] = useState<'theater' | 'seats' | 'payment' | 'success'>('theater');
+  const [ticketCount, setTicketCount] = useState<number>(2);
+  const [step, setStep] = useState<'theater' | 'tickets' | 'seats' | 'payment' | 'success'>('theater');
   const [isProcessing, setIsProcessing] = useState(false);
   
   const { user } = useAuth();
@@ -42,24 +63,50 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Memoize booked seats based on selected showtime
+  const bookedSeats = useMemo(() => {
+    if (!selectedShowtime) return new Set<string>();
+    return generateBookedSeats(selectedShowtime.id);
+  }, [selectedShowtime?.id]);
+
   // Reset state when modal opens with a new movie
   useEffect(() => {
     if (isOpen && movie) {
       setStep('theater');
       setSelectedShowtime(null);
       setSelectedSeats([]);
+      setTicketCount(2);
     }
   }, [isOpen, movie?.id]);
 
   const handleShowtimeSelect = (showtime: Showtime) => {
     setSelectedShowtime(showtime);
+    setSelectedSeats([]);
+    setStep('tickets');
+  };
+
+  const handleTicketCountConfirm = () => {
     setStep('seats');
   };
 
   const toggleSeat = (seat: string) => {
-    setSelectedSeats((prev) =>
-      prev.includes(seat) ? prev.filter((s) => s !== seat) : [...prev, seat]
-    );
+    if (bookedSeats.has(seat)) return; // Can't select booked seats
+    
+    setSelectedSeats((prev) => {
+      if (prev.includes(seat)) {
+        return prev.filter((s) => s !== seat);
+      }
+      // Only allow selecting up to ticketCount seats
+      if (prev.length >= ticketCount) {
+        toast({
+          title: 'Seat limit reached',
+          description: `You can only select ${ticketCount} seat${ticketCount > 1 ? 's' : ''}.`,
+          variant: 'destructive',
+        });
+        return prev;
+      }
+      return [...prev, seat];
+    });
   };
 
   const handleProceedToPayment = () => {
@@ -243,8 +290,8 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
           </div>
         )}
 
-        {step === 'seats' && selectedShowtime && (
-          <div className="space-y-4">
+        {step === 'tickets' && selectedShowtime && (
+          <div className="space-y-6">
             <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
               <div>
                 <p className="font-medium">{selectedShowtime.theater.name}</p>
@@ -257,60 +304,134 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
               </Button>
             </div>
 
+            <div className="text-center space-y-4">
+              <div className="flex items-center justify-center gap-2">
+                <Users className="h-6 w-6 text-primary" />
+                <h3 className="text-lg font-semibold">How many tickets?</h3>
+              </div>
+              
+              <Select 
+                value={ticketCount.toString()} 
+                onValueChange={(val) => setTicketCount(parseInt(val))}
+              >
+                <SelectTrigger className="w-32 mx-auto">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
+                    <SelectItem key={num} value={num.toString()}>
+                      {num} {num === 1 ? 'Ticket' : 'Tickets'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <p className="text-sm text-muted-foreground">
+                Total: ${(ticketCount * selectedShowtime.price).toFixed(2)}
+              </p>
+            </div>
+
+            <Button className="w-full" onClick={handleTicketCountConfirm}>
+              Select Seats
+            </Button>
+          </div>
+        )}
+
+        {step === 'seats' && selectedShowtime && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+              <div>
+                <p className="font-medium">{selectedShowtime.theater.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {selectedShowtime.theater.location} • {formatTime(selectedShowtime.show_time)} • {ticketCount} ticket{ticketCount > 1 ? 's' : ''}
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setStep('tickets')}>
+                Change
+              </Button>
+            </div>
+
             {/* Screen indicator */}
             <div className="text-center">
-              <div className="w-3/4 mx-auto h-2 bg-primary/30 rounded-t-full mb-4" />
-              <span className="text-xs text-muted-foreground">SCREEN</span>
+              <div className="w-3/4 mx-auto h-2 bg-gradient-to-r from-transparent via-primary/50 to-transparent rounded-t-full mb-4" />
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">Screen</span>
             </div>
 
             {/* Seat grid */}
-            <div className="space-y-2">
+            <div className="space-y-2 py-4">
               {SEAT_ROWS.map((row) => (
                 <div key={row} className="flex items-center gap-2 justify-center">
-                  <span className="w-6 text-sm text-muted-foreground">{row}</span>
+                  <span className="w-6 text-sm font-medium text-muted-foreground">{row}</span>
                   <div className="flex gap-1">
                     {Array.from({ length: SEATS_PER_ROW }, (_, i) => {
                       const seatId = `${row}${i + 1}`;
+                      const isBooked = bookedSeats.has(seatId);
                       const isSelected = selectedSeats.includes(seatId);
+                      
                       return (
                         <button
                           key={seatId}
                           onClick={() => toggleSeat(seatId)}
-                          className={`w-8 h-8 rounded-t-lg text-xs font-medium transition-colors ${
-                            isSelected
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted hover:bg-muted-foreground/20'
+                          disabled={isBooked}
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-t-lg text-xs font-medium transition-all duration-200 ${
+                            isBooked
+                              ? 'bg-muted-foreground/40 text-muted-foreground/60 cursor-not-allowed'
+                              : isSelected
+                              ? 'bg-primary text-primary-foreground shadow-lg scale-105'
+                              : 'border-2 border-green-500 text-green-500 hover:bg-green-500/10 hover:scale-105'
                           }`}
+                          title={isBooked ? 'Seat unavailable' : `Seat ${seatId}`}
                         >
                           {i + 1}
                         </button>
                       );
                     })}
                   </div>
+                  <span className="w-6 text-sm font-medium text-muted-foreground">{row}</span>
                 </div>
               ))}
             </div>
 
             {/* Legend */}
-            <div className="flex justify-center gap-4 text-sm">
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-4 rounded-t bg-muted" />
+            <div className="flex justify-center gap-6 text-sm border-t border-b py-3">
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-t border-2 border-green-500" />
                 <span className="text-muted-foreground">Available</span>
               </div>
-              <div className="flex items-center gap-1">
-                <div className="w-4 h-4 rounded-t bg-primary" />
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-t bg-primary" />
                 <span className="text-muted-foreground">Selected</span>
               </div>
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 rounded-t bg-muted-foreground/40" />
+                <span className="text-muted-foreground">Filled</span>
+              </div>
+            </div>
+
+            {/* Selection status */}
+            <div className="text-center py-2">
+              <p className="text-sm">
+                {selectedSeats.length === 0 ? (
+                  <span className="text-muted-foreground">Select {ticketCount} seat{ticketCount > 1 ? 's' : ''}</span>
+                ) : selectedSeats.length < ticketCount ? (
+                  <span className="text-amber-500">
+                    Select {ticketCount - selectedSeats.length} more seat{ticketCount - selectedSeats.length > 1 ? 's' : ''}
+                  </span>
+                ) : (
+                  <span className="text-green-500 font-medium">All seats selected ✓</span>
+                )}
+              </p>
             </div>
 
             {/* Summary */}
             {selectedSeats.length > 0 && (
               <div className="p-4 bg-muted rounded-lg space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Seats: {selectedSeats.join(', ')}</span>
+                  <span>Selected Seats:</span>
+                  <span className="font-medium">{selectedSeats.sort().join(', ')}</span>
                 </div>
                 <div className="flex justify-between font-semibold">
-                  <span>Total ({selectedSeats.length} tickets @ ${selectedShowtime.price})</span>
+                  <span>Total ({selectedSeats.length} × ${selectedShowtime.price})</span>
                   <span>${totalPrice.toFixed(2)}</span>
                 </div>
               </div>
@@ -319,9 +440,12 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
             <Button
               className="w-full"
               onClick={handleProceedToPayment}
-              disabled={selectedSeats.length === 0}
+              disabled={selectedSeats.length !== ticketCount}
             >
-              Proceed to Payment
+              {selectedSeats.length !== ticketCount 
+                ? `Select ${ticketCount} Seat${ticketCount > 1 ? 's' : ''} to Continue`
+                : 'Proceed to Payment'
+              }
             </Button>
           </div>
         )}
