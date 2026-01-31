@@ -1,4 +1,4 @@
-# 🎟️ BookMyShow Clone (Lovable)
+# 🎟️ BookMyShow (Lovable)
 
 A frontend web application inspired by BookMyShow, developed using Lovable, focused on recreating a real-world movie ticket booking user flow with a clean and responsive interface.
 
@@ -26,7 +26,9 @@ Lovable – rapid application development platform
 
 Frontend Technologies – HTML, CSS, JavaScript (abstracted via Lovable)
 
-UI/UX Design Principles – real-world application flow
+Backend - Supabase
+
+DB- PostgreSql
 
 ## 🎯 Purpose & Use Case
 
