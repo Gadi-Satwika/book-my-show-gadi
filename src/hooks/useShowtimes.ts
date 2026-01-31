@@ -26,7 +26,7 @@ export interface TheaterWithShowtimes {
   showtimes: Showtime[];
 }
 
-export const useShowtimes = (movieId: string | null, selectedDate?: string | null, location?: string) => {
+export const useShowtimes = (movieId: string | null, selectedDate?: string | null, _location?: string) => {
   const [allShowtimes, setAllShowtimes] = useState<Showtime[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,12 +82,8 @@ export const useShowtimes = (movieId: string | null, selectedDate?: string | nul
           theater: showtime.theaters as Theater,
         })) || [];
 
-        // Filter by location if provided
-        if (location) {
-          showtimes = showtimes.filter(
-            (showtime) => showtime.theater?.location?.toLowerCase().includes(location.toLowerCase())
-          );
-        }
+        // Note: Location filtering removed as theater locations are mall names, not city names
+        // All showtimes are shown regardless of user's selected city
 
         setAllShowtimes(showtimes);
       } catch (err: any) {
