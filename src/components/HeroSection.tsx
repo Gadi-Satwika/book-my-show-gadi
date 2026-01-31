@@ -1,0 +1,90 @@
+import { Play, Star, Clock, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Movie } from "@/types/movie";
+
+interface HeroSectionProps {
+  movie: Movie;
+}
+
+const HeroSection = ({ movie }: HeroSectionProps) => {
+  return (
+    <section className="relative h-[60vh] md:h-[70vh] overflow-hidden">
+      {/* Background Image */}
+      <div className="absolute inset-0">
+        <img
+          src={movie.poster}
+          alt={movie.title}
+          className="w-full h-full object-cover"
+        />
+        {/* Gradient Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-background/40" />
+      </div>
+
+      {/* Content */}
+      <div className="relative container mx-auto px-4 h-full flex items-center">
+        <div className="max-w-2xl animate-fade-in">
+          {/* Badges */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {movie.genres.map((genre) => (
+              <Badge
+                key={genre}
+                variant="secondary"
+                className="bg-genre text-foreground border-none"
+              >
+                {genre}
+              </Badge>
+            ))}
+          </div>
+
+          {/* Title */}
+          <h1 className="text-4xl md:text-6xl font-bold mb-4 tracking-tight">
+            {movie.title}
+          </h1>
+
+          {/* Meta Info */}
+          <div className="flex flex-wrap items-center gap-4 mb-4 text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <Star className="h-5 w-5 fill-rating text-rating" />
+              <span className="font-semibold text-foreground">{movie.rating}</span>
+              <span className="text-sm">({movie.votes} votes)</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Clock className="h-4 w-4" />
+              <span>{movie.duration}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Calendar className="h-4 w-4" />
+              <span>{movie.releaseDate}</span>
+            </div>
+          </div>
+
+          {/* Description */}
+          {movie.description && (
+            <p className="text-muted-foreground mb-6 text-lg max-w-xl">
+              {movie.description}
+            </p>
+          )}
+
+          {/* CTA Buttons */}
+          <div className="flex flex-wrap gap-4">
+            <Button size="lg" className="bg-primary hover:bg-primary/90 gap-2">
+              <Play className="h-5 w-5 fill-current" />
+              Book Tickets
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="border-foreground/30 hover:bg-foreground/10"
+            >
+              Watch Trailer
+            </Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default HeroSection;

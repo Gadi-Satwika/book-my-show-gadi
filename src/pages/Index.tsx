@@ -1,12 +1,42 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import Header from "@/components/Header";
+import HeroSection from "@/components/HeroSection";
+import MovieSection from "@/components/MovieSection";
+import Footer from "@/components/Footer";
+import { featuredMovie, nowShowingMovies, upcomingMovies } from "@/data/movies";
 
 const Index = () => {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Header />
+      
+      <main>
+        {/* Hero Section */}
+        <HeroSection movie={featuredMovie} />
+
+        {/* Movie Sections */}
+        <div className="container mx-auto px-4">
+          <MovieSection
+            title="🎬 Now Showing"
+            movies={nowShowingMovies}
+            viewAllLink="/movies/now-showing"
+          />
+
+          <MovieSection
+            title="🎥 Coming Soon"
+            movies={upcomingMovies}
+            viewAllLink="/movies/upcoming"
+          />
+
+          {/* Recommended Section - Using same movies for demo */}
+          <MovieSection
+            title="⭐ Recommended For You"
+            movies={[...nowShowingMovies].reverse()}
+            viewAllLink="/movies/recommended"
+          />
+        </div>
+      </main>
+
+      <Footer />
     </div>
   );
 };
