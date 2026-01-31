@@ -98,7 +98,7 @@ const Index = () => {
                 <MovieSection
                   title={`${getCategoryTitle()} Now Showing${selectedLocation ? ` in ${selectedLocation}` : ''}`}
                   movies={nowShowingMovies}
-                  viewAllLink={`/${activeCategory.toLowerCase()}/now-showing`}
+                  viewAllLink={`/all?category=${activeCategory}&section=now-showing`}
                   onBookClick={handleBookClick}
                 />
               )}
@@ -107,7 +107,7 @@ const Index = () => {
                 <MovieSection
                   title={`${getCategoryTitle()} Coming Soon`}
                   movies={upcomingMovies}
-                  viewAllLink={`/${activeCategory.toLowerCase()}/upcoming`}
+                  viewAllLink={`/all?category=${activeCategory}&section=upcoming`}
                   onBookClick={handleBookClick}
                 />
               )}
@@ -116,7 +116,7 @@ const Index = () => {
                 <MovieSection
                   title="⭐ Recommended For You"
                   movies={[...nowShowingMovies].reverse()}
-                  viewAllLink={`/${activeCategory.toLowerCase()}/recommended`}
+                  viewAllLink={`/all?category=${activeCategory}&section=recommended`}
                   onBookClick={handleBookClick}
                 />
               )}

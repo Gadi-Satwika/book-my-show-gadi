@@ -1,5 +1,6 @@
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import MovieCard from "./MovieCard";
 import { Movie } from "@/hooks/useMovies";
 import { useRef } from "react";
@@ -13,6 +14,7 @@ interface MovieSectionProps {
 
 const MovieSection = ({ title, movies, viewAllLink, onBookClick }: MovieSectionProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -33,6 +35,7 @@ const MovieSection = ({ title, movies, viewAllLink, onBookClick }: MovieSectionP
           <Button
             variant="link"
             className="text-primary hover:text-primary/80 gap-1 p-0"
+            onClick={() => navigate(viewAllLink)}
           >
             See All
             <ChevronRight className="h-4 w-4" />
