@@ -60,8 +60,8 @@ Open to improvements and feature enhancements
 
 📬 Contact
 Gadi Satwika: satwikagadi2005@gmail.com
-GitHub: https://github.com/Gadi-Satwika
-LinkedIn: [www.linkedin.com/in/gadi-satwika-075414305]
+
 GitHub: https://github.com/Gadi-Satwika
 
-LinkedIn: (add your LinkedIn profile link here)
+LinkedIn: [www.linkedin.com/in/gadi-satwika-075414305]
+ ### Thank You!!
