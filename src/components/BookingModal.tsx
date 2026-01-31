@@ -53,6 +53,30 @@ const formatTime = (time: string) => {
   return `${displayHour}:${minutes} ${ampm}`;
 };
 
+const formatDateDisplay = (dateString: string) => {
+  const date = new Date(dateString + 'T00:00:00');
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const dateOnly = new Date(date);
+  dateOnly.setHours(0, 0, 0, 0);
+  
+  const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+  const dayNum = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  
+  let label = '';
+  if (dateOnly.getTime() === today.getTime()) {
+    label = 'Today';
+  } else if (dateOnly.getTime() === tomorrow.getTime()) {
+    label = 'Tomorrow';
+  }
+  
+  return { dayName, dayNum, month, label };
+};
+
 type PaymentMethod = 'credit' | 'debit' | 'upi';
 
 interface CardDetails {
@@ -73,6 +97,7 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
   const [step, setStep] = useState<'theater' | 'tickets' | 'seats' | 'payment' | 'success'>('theater');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit');
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [cardDetails, setCardDetails] = useState<CardDetails>({
     cardNumber: '',
     cardHolder: '',
@@ -83,7 +108,7 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
   
   const { user } = useAuth();
   const { createBooking, processPayment } = useBookings();
-  const { theatersWithShowtimes, loading: showtimesLoading } = useShowtimes(movie?.id || null);
+  const { theatersWithShowtimes, availableDates, loading: showtimesLoading } = useShowtimes(movie?.id || null, selectedDate);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -100,11 +125,19 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
       setSelectedShowtime(null);
       setSelectedSeats([]);
       setTicketCount(2);
+      setSelectedDate(null);
       setPaymentMethod('credit');
       setCardDetails({ cardNumber: '', cardHolder: '', expiry: '', cvv: '' });
       setUpiDetails({ upiId: '' });
     }
   }, [isOpen, movie?.id]);
+
+  // Auto-select first available date when dates load
+  useEffect(() => {
+    if (availableDates.length > 0 && !selectedDate) {
+      setSelectedDate(availableDates[0]);
+    }
+  }, [availableDates, selectedDate]);
 
   const handleShowtimeSelect = (showtime: Showtime) => {
     setSelectedShowtime(showtime);
@@ -305,6 +338,48 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
               Theaters Showing {movie.title}
             </h2>
 
+            {/* Horizontal Date Picker */}
+            {availableDates.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Select Date</span>
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                  {availableDates.map((date) => {
+                    const { dayName, dayNum, month, label } = formatDateDisplay(date);
+                    const isSelected = selectedDate === date;
+                    return (
+                      <button
+                        key={date}
+                        onClick={() => setSelectedDate(date)}
+                        className={`flex-shrink-0 flex flex-col items-center px-4 py-3 rounded-lg border-2 transition-all min-w-[80px] ${
+                          isSelected
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border hover:border-primary/50 bg-card'
+                        }`}
+                      >
+                        {label && (
+                          <span className={`text-xs font-semibold mb-1 ${isSelected ? 'text-primary-foreground' : 'text-primary'}`}>
+                            {label}
+                          </span>
+                        )}
+                        <span className={`text-xs ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                          {dayName}
+                        </span>
+                        <span className={`text-lg font-bold ${isSelected ? 'text-primary-foreground' : 'text-foreground'}`}>
+                          {dayNum}
+                        </span>
+                        <span className={`text-xs ${isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                          {month}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {showtimesLoading ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
@@ -321,8 +396,8 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
               </div>
             ) : theatersWithShowtimes.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground">No showtimes available for this movie.</p>
-                <p className="text-sm text-muted-foreground mt-2">Please check back later.</p>
+                <p className="text-muted-foreground">No showtimes available for this date.</p>
+                <p className="text-sm text-muted-foreground mt-2">Please select another date or check back later.</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -354,8 +429,8 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
                     </div>
 
                     <div className="flex items-center gap-2 mb-3">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Today's Showtimes</span>
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">Available Showtimes</span>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
