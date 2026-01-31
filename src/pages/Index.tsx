@@ -4,13 +4,20 @@ import HeroSection from "@/components/HeroSection";
 import MovieSection from "@/components/MovieSection";
 import Footer from "@/components/Footer";
 import BookingModal from "@/components/BookingModal";
+import LocationModal from "@/components/LocationModal";
+import TrailerModal from "@/components/TrailerModal";
 import { useMovies, Movie } from "@/hooks/useMovies";
+import { useLocation } from "@/contexts/LocationContext";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const Index = () => {
-  const { nowShowingMovies, upcomingMovies, featuredMovie, loading, error } = useMovies();
+  const [activeCategory, setActiveCategory] = useState("Movies");
+  const { selectedLocation } = useLocation();
+  const { nowShowingMovies, upcomingMovies, featuredMovie, loading, error } = useMovies(activeCategory, selectedLocation);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [trailerMovie, setTrailerMovie] = useState<Movie | null>(null);
+  const [isTrailerOpen, setIsTrailerOpen] = useState(false);
 
   const handleBookClick = (movie: Movie) => {
     setSelectedMovie(movie);
@@ -20,6 +27,28 @@ const Index = () => {
   const handleCloseBooking = () => {
     setIsBookingOpen(false);
     setSelectedMovie(null);
+  };
+
+  const handleWatchTrailer = (movie: Movie) => {
+    setTrailerMovie(movie);
+    setIsTrailerOpen(true);
+  };
+
+  const handleCloseTrailer = () => {
+    setIsTrailerOpen(false);
+    setTrailerMovie(null);
+  };
+
+  const getCategoryTitle = () => {
+    switch (activeCategory) {
+      case 'Movies': return '🎬';
+      case 'Stream': return '📺';
+      case 'Events': return '🎉';
+      case 'Plays': return '🎭';
+      case 'Sports': return '⚽';
+      case 'Activities': return '🎯';
+      default: return '🎬';
+    }
   };
 
   if (error) {
@@ -35,11 +64,20 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header 
+        activeCategory={activeCategory} 
+        onCategoryChange={setActiveCategory}
+        onMovieClick={handleBookClick}
+      />
+      <LocationModal />
       
       <main>
         {/* Hero Section */}
-        <HeroSection movie={featuredMovie} onBookClick={handleBookClick} />
+        <HeroSection 
+          movie={featuredMovie} 
+          onBookClick={handleBookClick} 
+          onWatchTrailer={handleWatchTrailer}
+        />
 
         {/* Movie Sections */}
         <div className="container mx-auto px-4">
@@ -58,18 +96,18 @@ const Index = () => {
             <>
               {nowShowingMovies.length > 0 && (
                 <MovieSection
-                  title="🎬 Now Showing"
+                  title={`${getCategoryTitle()} Now Showing${selectedLocation ? ` in ${selectedLocation}` : ''}`}
                   movies={nowShowingMovies}
-                  viewAllLink="/movies/now-showing"
+                  viewAllLink={`/${activeCategory.toLowerCase()}/now-showing`}
                   onBookClick={handleBookClick}
                 />
               )}
 
               {upcomingMovies.length > 0 && (
                 <MovieSection
-                  title="🎥 Coming Soon"
+                  title={`${getCategoryTitle()} Coming Soon`}
                   movies={upcomingMovies}
-                  viewAllLink="/movies/upcoming"
+                  viewAllLink={`/${activeCategory.toLowerCase()}/upcoming`}
                   onBookClick={handleBookClick}
                 />
               )}
@@ -78,9 +116,20 @@ const Index = () => {
                 <MovieSection
                   title="⭐ Recommended For You"
                   movies={[...nowShowingMovies].reverse()}
-                  viewAllLink="/movies/recommended"
+                  viewAllLink={`/${activeCategory.toLowerCase()}/recommended`}
                   onBookClick={handleBookClick}
                 />
+              )}
+
+              {nowShowingMovies.length === 0 && upcomingMovies.length === 0 && (
+                <div className="py-16 text-center">
+                  <p className="text-xl text-muted-foreground">
+                    No {activeCategory.toLowerCase()} available{selectedLocation ? ` in ${selectedLocation}` : ''} right now.
+                  </p>
+                  <p className="text-muted-foreground mt-2">
+                    Check back later for updates!
+                  </p>
+                </div>
               )}
             </>
           )}
@@ -94,6 +143,14 @@ const Index = () => {
         movie={selectedMovie}
         isOpen={isBookingOpen}
         onClose={handleCloseBooking}
+      />
+
+      {/* Trailer Modal */}
+      <TrailerModal
+        isOpen={isTrailerOpen}
+        onClose={handleCloseTrailer}
+        trailerUrl={trailerMovie?.trailer_url || null}
+        movieTitle={trailerMovie?.title || ''}
       />
     </div>
   );

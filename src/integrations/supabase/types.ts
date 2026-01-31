@@ -67,6 +67,7 @@ export type Database = {
       }
       movies: {
         Row: {
+          category: string | null
           created_at: string
           description: string | null
           duration: number | null
@@ -77,9 +78,11 @@ export type Database = {
           rating: number | null
           release_date: string | null
           title: string
+          trailer_url: string | null
           votes: number | null
         }
         Insert: {
+          category?: string | null
           created_at?: string
           description?: string | null
           duration?: number | null
@@ -90,9 +93,11 @@ export type Database = {
           rating?: number | null
           release_date?: string | null
           title: string
+          trailer_url?: string | null
           votes?: number | null
         }
         Update: {
+          category?: string | null
           created_at?: string
           description?: string | null
           duration?: number | null
@@ -103,6 +108,7 @@ export type Database = {
           rating?: number | null
           release_date?: string | null
           title?: string
+          trailer_url?: string | null
           votes?: number | null
         }
         Relationships: []

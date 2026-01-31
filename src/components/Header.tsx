@@ -1,9 +1,13 @@
 import { Search, MapPin, Menu, X, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLocation } from "@/contexts/LocationContext";
+import { useSearch } from "@/hooks/useSearch";
+import SearchResults from "./SearchResults";
+import { Movie } from "@/hooks/useMovies";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,15 +17,54 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-const Header = () => {
+interface HeaderProps {
+  activeCategory?: string;
+  onCategoryChange?: (category: string) => void;
+  onMovieClick?: (movie: Movie) => void;
+}
+
+const CATEGORIES = ["Movies", "Stream", "Events", "Plays", "Sports", "Activities"];
+
+const Header = ({ activeCategory = "Movies", onCategoryChange, onMovieClick }: HeaderProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const { user, profile, signOut, loading } = useAuth();
+  const { selectedLocation, setShowLocationModal } = useLocation();
+  const { results, isLoading } = useSearch(searchQuery);
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
   };
+
+  const handleCategoryClick = (category: string) => {
+    onCategoryChange?.(category);
+  };
+
+  const handleSearchClose = () => {
+    setSearchQuery('');
+    setIsSearchFocused(false);
+  };
+
+  const handleMovieClick = (movie: Movie) => {
+    onMovieClick?.(movie);
+    handleSearchClose();
+  };
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setIsSearchFocused(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
@@ -35,22 +78,38 @@ const Header = () => {
           </Link>
 
           {/* Search Bar - Hidden on mobile */}
-          <div className="hidden md:flex flex-1 max-w-xl mx-8">
+          <div className="hidden md:flex flex-1 max-w-xl mx-8 relative" ref={searchRef}>
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Search for Movies, Events, Plays, Sports..."
                 className="pl-10 bg-secondary border-none focus-visible:ring-primary"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
               />
+              {isSearchFocused && (searchQuery || isLoading) && (
+                <SearchResults
+                  results={results}
+                  isLoading={isLoading}
+                  searchQuery={searchQuery}
+                  onMovieClick={handleMovieClick}
+                  onClose={handleSearchClose}
+                />
+              )}
             </div>
           </div>
 
           {/* Right Section */}
           <div className="hidden md:flex items-center gap-4">
-            <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+            <Button 
+              variant="ghost" 
+              className="gap-2 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowLocationModal(true)}
+            >
               <MapPin className="h-4 w-4" />
-              <span>Mumbai</span>
+              <span>{selectedLocation || 'Select Location'}</span>
             </Button>
             
             {!loading && (
@@ -107,18 +166,37 @@ const Header = () => {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden py-4 space-y-4 animate-fade-in">
-            <div className="relative">
+            <div className="relative" ref={searchRef}>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Search for Movies, Events..."
                 className="pl-10 bg-secondary border-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
               />
+              {isSearchFocused && (searchQuery || isLoading) && (
+                <SearchResults
+                  results={results}
+                  isLoading={isLoading}
+                  searchQuery={searchQuery}
+                  onMovieClick={handleMovieClick}
+                  onClose={handleSearchClose}
+                />
+              )}
             </div>
             <div className="flex flex-col gap-2">
-              <Button variant="ghost" className="justify-start gap-2">
+              <Button 
+                variant="ghost" 
+                className="justify-start gap-2"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setShowLocationModal(true);
+                }}
+              >
                 <MapPin className="h-4 w-4" />
-                <span>Mumbai</span>
+                <span>{selectedLocation || 'Select Location'}</span>
               </Button>
               {user ? (
                 <>
@@ -163,10 +241,15 @@ const Header = () => {
       <nav className="border-t border-border bg-secondary/50">
         <div className="container mx-auto px-4">
           <div className="flex items-center gap-6 h-12 overflow-x-auto scrollbar-hide">
-            {["Movies", "Stream", "Events", "Plays", "Sports", "Activities"].map((item) => (
+            {CATEGORIES.map((item) => (
               <button
                 key={item}
-                className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors whitespace-nowrap"
+                onClick={() => handleCategoryClick(item)}
+                className={`text-sm font-medium transition-colors whitespace-nowrap pb-1 border-b-2 ${
+                  activeCategory === item
+                    ? 'text-primary border-primary'
+                    : 'text-muted-foreground hover:text-primary border-transparent'
+                }`}
               >
                 {item}
               </button>
