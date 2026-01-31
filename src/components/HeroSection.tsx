@@ -1,19 +1,34 @@
 import { Play, Star, Clock, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Movie } from "@/types/movie";
+import { Movie } from "@/hooks/useMovies";
 
 interface HeroSectionProps {
-  movie: Movie;
+  movie: Movie | null;
+  onBookClick: (movie: Movie) => void;
 }
 
-const HeroSection = ({ movie }: HeroSectionProps) => {
+const HeroSection = ({ movie, onBookClick }: HeroSectionProps) => {
+  if (!movie) {
+    return (
+      <section className="relative h-[60vh] md:h-[70vh] overflow-hidden bg-muted flex items-center justify-center">
+        <p className="text-muted-foreground">Loading featured movie...</p>
+      </section>
+    );
+  }
+
+  const formatDuration = (minutes: number) => {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+  };
+
   return (
     <section className="relative h-[60vh] md:h-[70vh] overflow-hidden">
       {/* Background Image */}
       <div className="absolute inset-0">
         <img
-          src={movie.poster}
+          src={movie.poster_url || '/placeholder.svg'}
           alt={movie.title}
           className="w-full h-full object-cover"
         />
@@ -48,28 +63,34 @@ const HeroSection = ({ movie }: HeroSectionProps) => {
             <div className="flex items-center gap-1">
               <Star className="h-5 w-5 fill-rating text-rating" />
               <span className="font-semibold text-foreground">{movie.rating}</span>
-              <span className="text-sm">({movie.votes} votes)</span>
+              <span className="text-sm">({movie.votes.toLocaleString()} votes)</span>
             </div>
             <div className="flex items-center gap-1">
               <Clock className="h-4 w-4" />
-              <span>{movie.duration}</span>
+              <span>{formatDuration(movie.duration)}</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              <span>{movie.releaseDate}</span>
-            </div>
+            {movie.release_date && (
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                <span>{new Date(movie.release_date).toLocaleDateString()}</span>
+              </div>
+            )}
           </div>
 
           {/* Description */}
           {movie.description && (
-            <p className="text-muted-foreground mb-6 text-lg max-w-xl">
+            <p className="text-muted-foreground mb-6 text-lg max-w-xl line-clamp-3">
               {movie.description}
             </p>
           )}
 
           {/* CTA Buttons */}
           <div className="flex flex-wrap gap-4">
-            <Button size="lg" className="bg-primary hover:bg-primary/90 gap-2">
+            <Button 
+              size="lg" 
+              className="bg-primary hover:bg-primary/90 gap-2"
+              onClick={() => onBookClick(movie)}
+            >
               <Play className="h-5 w-5 fill-current" />
               Book Tickets
             </Button>

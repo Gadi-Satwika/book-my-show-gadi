@@ -1,21 +1,38 @@
-import { Search, MapPin, Menu, X } from "lucide-react";
+import { Search, MapPin, Menu, X, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, profile, signOut, loading } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <div className="text-2xl font-bold text-gradient">
               BookMyShow
             </div>
-          </div>
+          </Link>
 
           {/* Search Bar - Hidden on mobile */}
           <div className="hidden md:flex flex-1 max-w-xl mx-8">
@@ -35,9 +52,45 @@ const Header = () => {
               <MapPin className="h-4 w-4" />
               <span>Mumbai</span>
             </Button>
-            <Button variant="default" className="bg-primary hover:bg-primary/90">
-              Sign In
-            </Button>
+            
+            {!loading && (
+              user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="gap-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={profile?.avatar_url || undefined} />
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {profile?.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="max-w-[100px] truncate">
+                        {profile?.name || user.email?.split('@')[0]}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem className="gap-2">
+                      <User className="h-4 w-4" />
+                      My Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="gap-2 text-destructive">
+                      <LogOut className="h-4 w-4" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button 
+                  variant="default" 
+                  className="bg-primary hover:bg-primary/90"
+                  onClick={() => navigate('/auth')}
+                >
+                  Sign In
+                </Button>
+              )
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -67,9 +120,40 @@ const Header = () => {
                 <MapPin className="h-4 w-4" />
                 <span>Mumbai</span>
               </Button>
-              <Button variant="default" className="bg-primary hover:bg-primary/90">
-                Sign In
-              </Button>
+              {user ? (
+                <>
+                  <div className="flex items-center gap-2 px-4 py-2">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {profile?.name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">
+                      {profile?.name || user.email?.split('@')[0]}
+                    </span>
+                  </div>
+                  <Button 
+                    variant="ghost" 
+                    className="justify-start gap-2 text-destructive"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  variant="default" 
+                  className="bg-primary hover:bg-primary/90"
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    navigate('/auth');
+                  }}
+                >
+                  Sign In
+                </Button>
+              )}
             </div>
           </div>
         )}

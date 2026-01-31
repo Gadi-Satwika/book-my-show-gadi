@@ -1,16 +1,17 @@
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MovieCard from "./MovieCard";
-import { Movie } from "@/types/movie";
+import { Movie } from "@/hooks/useMovies";
 import { useRef } from "react";
 
 interface MovieSectionProps {
   title: string;
   movies: Movie[];
   viewAllLink?: string;
+  onBookClick: (movie: Movie) => void;
 }
 
-const MovieSection = ({ title, movies, viewAllLink }: MovieSectionProps) => {
+const MovieSection = ({ title, movies, viewAllLink, onBookClick }: MovieSectionProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: "left" | "right") => {
@@ -71,7 +72,7 @@ const MovieSection = ({ title, movies, viewAllLink }: MovieSectionProps) => {
               className="flex-shrink-0 w-[160px] md:w-[200px]"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <MovieCard movie={movie} />
+              <MovieCard movie={movie} onBookClick={onBookClick} />
             </div>
           ))}
         </div>
