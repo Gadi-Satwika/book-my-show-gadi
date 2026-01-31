@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Clock, Calendar, CreditCard, Loader2, MapPin, ChevronRight, Users } from 'lucide-react';
+import { Star, Clock, Calendar, CreditCard, Loader2, MapPin, ChevronRight, Users, Smartphone, Building2, Check, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +11,9 @@ import { Tables } from '@/integrations/supabase/types';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 type Movie = Tables<'movies'>;
 
@@ -50,12 +53,33 @@ const formatTime = (time: string) => {
   return `${displayHour}:${minutes} ${ampm}`;
 };
 
+type PaymentMethod = 'credit' | 'debit' | 'upi';
+
+interface CardDetails {
+  cardNumber: string;
+  cardHolder: string;
+  expiry: string;
+  cvv: string;
+}
+
+interface UpiDetails {
+  upiId: string;
+}
+
 const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
   const [selectedShowtime, setSelectedShowtime] = useState<Showtime | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [ticketCount, setTicketCount] = useState<number>(2);
   const [step, setStep] = useState<'theater' | 'tickets' | 'seats' | 'payment' | 'success'>('theater');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit');
+  const [cardDetails, setCardDetails] = useState<CardDetails>({
+    cardNumber: '',
+    cardHolder: '',
+    expiry: '',
+    cvv: '',
+  });
+  const [upiDetails, setUpiDetails] = useState<UpiDetails>({ upiId: '' });
   
   const { user } = useAuth();
   const { createBooking, processPayment } = useBookings();
@@ -76,6 +100,9 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
       setSelectedShowtime(null);
       setSelectedSeats([]);
       setTicketCount(2);
+      setPaymentMethod('credit');
+      setCardDetails({ cardNumber: '', cardHolder: '', expiry: '', cvv: '' });
+      setUpiDetails({ upiId: '' });
     }
   }, [isOpen, movie?.id]);
 
@@ -133,8 +160,73 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
     setStep('payment');
   };
 
+  const formatCardNumber = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 16);
+    return digits.replace(/(\d{4})(?=\d)/g, '$1 ');
+  };
+
+  const formatExpiry = (value: string) => {
+    const digits = value.replace(/\D/g, '').slice(0, 4);
+    if (digits.length >= 2) {
+      return digits.slice(0, 2) + '/' + digits.slice(2);
+    }
+    return digits;
+  };
+
+  const validatePaymentForm = (): boolean => {
+    if (paymentMethod === 'upi') {
+      if (!upiDetails.upiId.includes('@')) {
+        toast({
+          title: 'Invalid UPI ID',
+          description: 'Please enter a valid UPI ID (e.g., name@upi)',
+          variant: 'destructive',
+        });
+        return false;
+      }
+      return true;
+    }
+
+    // Card validation
+    const cardNum = cardDetails.cardNumber.replace(/\s/g, '');
+    if (cardNum.length !== 16) {
+      toast({
+        title: 'Invalid Card Number',
+        description: 'Please enter a valid 16-digit card number',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    if (!cardDetails.cardHolder.trim()) {
+      toast({
+        title: 'Card Holder Required',
+        description: 'Please enter the card holder name',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    if (cardDetails.expiry.length !== 5) {
+      toast({
+        title: 'Invalid Expiry',
+        description: 'Please enter a valid expiry date (MM/YY)',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    if (cardDetails.cvv.length < 3) {
+      toast({
+        title: 'Invalid CVV',
+        description: 'Please enter a valid CVV',
+        variant: 'destructive',
+      });
+      return false;
+    }
+    return true;
+  };
+
   const handlePayment = async () => {
     if (!movie || !selectedShowtime) return;
+    
+    if (!validatePaymentForm()) return;
 
     setIsProcessing(true);
 
@@ -452,12 +544,16 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
 
         {step === 'payment' && selectedShowtime && (
           <div className="space-y-4">
+            {/* Booking Summary */}
             <div className="p-4 bg-muted rounded-lg space-y-3">
-              <h4 className="font-semibold">Booking Summary</h4>
+              <h4 className="font-semibold flex items-center gap-2">
+                <Check className="h-4 w-4 text-primary" />
+                Booking Summary
+              </h4>
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Movie</span>
-                  <span>{movie.title}</span>
+                  <span className="font-medium">{movie.title}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Theater</span>
@@ -468,28 +564,134 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
                   <span>{selectedShowtime.theater.location}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Time</span>
-                  <span>{formatTime(selectedShowtime.show_time)}</span>
+                  <span className="text-muted-foreground">Date & Time</span>
+                  <span>{selectedShowtime.show_date} • {formatTime(selectedShowtime.show_time)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Seats</span>
-                  <span>{selectedSeats.join(', ')}</span>
+                  <span className="font-medium">{selectedSeats.sort().join(', ')}</span>
                 </div>
-                <div className="flex justify-between font-semibold text-base pt-2 border-t">
-                  <span>Total</span>
-                  <span>${totalPrice.toFixed(2)}</span>
+                <div className="flex justify-between font-semibold text-base pt-2 border-t mt-2">
+                  <span>Total Amount</span>
+                  <span className="text-primary">${totalPrice.toFixed(2)}</span>
                 </div>
               </div>
             </div>
 
-            <div className="p-4 border rounded-lg space-y-3">
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5 text-primary" />
-                <span className="font-medium">Mock Payment</span>
+            {/* Payment Method Selection */}
+            <div className="space-y-3">
+              <h4 className="font-semibold">Select Payment Method</h4>
+              <RadioGroup
+                value={paymentMethod}
+                onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+                className="space-y-2"
+              >
+                <div className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'credit' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}>
+                  <RadioGroupItem value="credit" id="credit" />
+                  <Label htmlFor="credit" className="flex items-center gap-2 cursor-pointer flex-1">
+                    <CreditCard className="h-5 w-5 text-primary" />
+                    <span>Credit Card</span>
+                  </Label>
+                </div>
+                <div className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'debit' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}>
+                  <RadioGroupItem value="debit" id="debit" />
+                  <Label htmlFor="debit" className="flex items-center gap-2 cursor-pointer flex-1">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    <span>Debit Card</span>
+                  </Label>
+                </div>
+                <div className={`flex items-center space-x-3 p-3 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'upi' ? 'border-primary bg-primary/5' : 'hover:border-primary/50'}`}>
+                  <RadioGroupItem value="upi" id="upi" />
+                  <Label htmlFor="upi" className="flex items-center gap-2 cursor-pointer flex-1">
+                    <Smartphone className="h-5 w-5 text-primary" />
+                    <span>UPI</span>
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            {/* Card Payment Form */}
+            {(paymentMethod === 'credit' || paymentMethod === 'debit') && (
+              <div className="space-y-4 p-4 border rounded-lg">
+                <div className="space-y-2">
+                  <Label htmlFor="cardNumber">Card Number</Label>
+                  <Input
+                    id="cardNumber"
+                    placeholder="1234 5678 9012 3456"
+                    value={cardDetails.cardNumber}
+                    onChange={(e) => setCardDetails({
+                      ...cardDetails,
+                      cardNumber: formatCardNumber(e.target.value)
+                    })}
+                    maxLength={19}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cardHolder">Card Holder Name</Label>
+                  <Input
+                    id="cardHolder"
+                    placeholder="John Doe"
+                    value={cardDetails.cardHolder}
+                    onChange={(e) => setCardDetails({
+                      ...cardDetails,
+                      cardHolder: e.target.value.toUpperCase()
+                    })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="expiry">Expiry Date</Label>
+                    <Input
+                      id="expiry"
+                      placeholder="MM/YY"
+                      value={cardDetails.expiry}
+                      onChange={(e) => setCardDetails({
+                        ...cardDetails,
+                        expiry: formatExpiry(e.target.value)
+                      })}
+                      maxLength={5}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cvv">CVV</Label>
+                    <Input
+                      id="cvv"
+                      type="password"
+                      placeholder="•••"
+                      value={cardDetails.cvv}
+                      onChange={(e) => setCardDetails({
+                        ...cardDetails,
+                        cvv: e.target.value.replace(/\D/g, '').slice(0, 4)
+                      })}
+                      maxLength={4}
+                    />
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                This is a simulated payment. Click "Pay Now" to complete your booking.
-              </p>
+            )}
+
+            {/* UPI Payment Form */}
+            {paymentMethod === 'upi' && (
+              <div className="space-y-4 p-4 border rounded-lg">
+                <div className="space-y-2">
+                  <Label htmlFor="upiId">UPI ID</Label>
+                  <Input
+                    id="upiId"
+                    placeholder="yourname@upi"
+                    value={upiDetails.upiId}
+                    onChange={(e) => setUpiDetails({ upiId: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter your UPI ID (e.g., name@paytm, name@gpay, name@phonepe)
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Security Notice */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+              <Shield className="h-4 w-4" />
+              <span>Your payment information is secure. This is a simulated payment for demo purposes.</span>
             </div>
 
             <div className="flex gap-2">
@@ -497,6 +699,7 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
                 variant="outline"
                 className="flex-1"
                 onClick={() => setStep('seats')}
+                disabled={isProcessing}
               >
                 Back
               </Button>
@@ -508,7 +711,7 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
                 {isProcessing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processing...
+                    Processing Payment...
                   </>
                 ) : (
                   `Pay $${totalPrice.toFixed(2)}`
