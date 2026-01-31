@@ -6,9 +6,10 @@ import { Movie } from "@/hooks/useMovies";
 interface HeroSectionProps {
   movie: Movie | null;
   onBookClick: (movie: Movie) => void;
+  onWatchTrailer: (movie: Movie) => void;
 }
 
-const HeroSection = ({ movie, onBookClick }: HeroSectionProps) => {
+const HeroSection = ({ movie, onBookClick, onWatchTrailer }: HeroSectionProps) => {
   if (!movie) {
     return (
       <section className="relative h-[60vh] md:h-[70vh] overflow-hidden bg-muted flex items-center justify-center">
@@ -42,7 +43,7 @@ const HeroSection = ({ movie, onBookClick }: HeroSectionProps) => {
         <div className="max-w-2xl animate-fade-in">
           {/* Badges */}
           <div className="flex flex-wrap gap-2 mb-4">
-            {movie.genres.map((genre) => (
+            {movie.genres?.map((genre) => (
               <Badge
                 key={genre}
                 variant="secondary"
@@ -63,11 +64,11 @@ const HeroSection = ({ movie, onBookClick }: HeroSectionProps) => {
             <div className="flex items-center gap-1">
               <Star className="h-5 w-5 fill-rating text-rating" />
               <span className="font-semibold text-foreground">{movie.rating}</span>
-              <span className="text-sm">({movie.votes.toLocaleString()} votes)</span>
+              <span className="text-sm">({movie.votes?.toLocaleString()} votes)</span>
             </div>
             <div className="flex items-center gap-1">
               <Clock className="h-4 w-4" />
-              <span>{formatDuration(movie.duration)}</span>
+              <span>{formatDuration(movie.duration || 0)}</span>
             </div>
             {movie.release_date && (
               <div className="flex items-center gap-1">
@@ -98,6 +99,7 @@ const HeroSection = ({ movie, onBookClick }: HeroSectionProps) => {
               size="lg"
               variant="outline"
               className="border-foreground/30 hover:bg-foreground/10"
+              onClick={() => onWatchTrailer(movie)}
             >
               Watch Trailer
             </Button>

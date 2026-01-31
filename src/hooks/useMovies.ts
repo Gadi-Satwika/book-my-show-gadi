@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 
-export type Movie = Tables<'movies'>;
+export type Movie = Tables<'movies'> & {
+  trailer_url?: string | null;
+  category?: string | null;
+};
 
-export function useMovies() {
+export function useMovies(category?: string, location?: string) {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,19 +42,27 @@ export function useMovies() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [category, location]);
 
   const fetchMovies = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    
+    let query = supabase
       .from('movies')
       .select('*')
       .order('rating', { ascending: false });
 
+    // Filter by category if provided
+    if (category && category !== 'Movies') {
+      query = query.eq('category', category.toLowerCase());
+    }
+
+    const { data, error } = await query;
+
     if (error) {
       setError(error.message);
     } else {
-      setMovies(data || []);
+      setMovies((data as Movie[]) || []);
     }
     setLoading(false);
   };

@@ -4,6 +4,7 @@ import { Star, Clock, Calendar, CreditCard, Loader2, MapPin, ChevronRight, Users
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocation } from '@/contexts/LocationContext';
 import { useBookings } from '@/hooks/useBookings';
 import { useShowtimes, Showtime, TheaterWithShowtimes } from '@/hooks/useShowtimes';
 import { useToast } from '@/hooks/use-toast';
@@ -107,8 +108,9 @@ const BookingModal = ({ movie, isOpen, onClose }: BookingModalProps) => {
   const [upiDetails, setUpiDetails] = useState<UpiDetails>({ upiId: '' });
   
   const { user } = useAuth();
+  const { selectedLocation } = useLocation();
   const { createBooking, processPayment } = useBookings();
-  const { theatersWithShowtimes, availableDates, loading: showtimesLoading } = useShowtimes(movie?.id || null, selectedDate);
+  const { theatersWithShowtimes, availableDates, loading: showtimesLoading } = useShowtimes(movie?.id || null, selectedDate, selectedLocation);
   const { toast } = useToast();
   const navigate = useNavigate();
 

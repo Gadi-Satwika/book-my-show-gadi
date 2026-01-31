@@ -26,7 +26,7 @@ export interface TheaterWithShowtimes {
   showtimes: Showtime[];
 }
 
-export const useShowtimes = (movieId: string | null, selectedDate?: string | null) => {
+export const useShowtimes = (movieId: string | null, selectedDate?: string | null, location?: string) => {
   const [allShowtimes, setAllShowtimes] = useState<Showtime[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export const useShowtimes = (movieId: string | null, selectedDate?: string | nul
 
         if (fetchError) throw fetchError;
 
-        const showtimes: Showtime[] = data?.map((showtime: any) => ({
+        let showtimes: Showtime[] = data?.map((showtime: any) => ({
           id: showtime.id,
           movie_id: showtime.movie_id,
           theater_id: showtime.theater_id,
@@ -81,6 +81,13 @@ export const useShowtimes = (movieId: string | null, selectedDate?: string | nul
           is_active: showtime.is_active,
           theater: showtime.theaters as Theater,
         })) || [];
+
+        // Filter by location if provided
+        if (location) {
+          showtimes = showtimes.filter(
+            (showtime) => showtime.theater?.location?.toLowerCase().includes(location.toLowerCase())
+          );
+        }
 
         setAllShowtimes(showtimes);
       } catch (err: any) {
@@ -113,7 +120,7 @@ export const useShowtimes = (movieId: string | null, selectedDate?: string | nul
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [movieId]);
+  }, [movieId, location]);
 
   // Get unique available dates
   const availableDates = useMemo(() => {
