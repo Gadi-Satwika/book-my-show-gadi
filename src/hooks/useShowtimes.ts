@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface Theater {
@@ -26,14 +26,14 @@ export interface TheaterWithShowtimes {
   showtimes: Showtime[];
 }
 
-export const useShowtimes = (movieId: string | null) => {
-  const [theatersWithShowtimes, setTheatersWithShowtimes] = useState<TheaterWithShowtimes[]>([]);
+export const useShowtimes = (movieId: string | null, selectedDate?: string | null) => {
+  const [allShowtimes, setAllShowtimes] = useState<Showtime[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!movieId) {
-      setTheatersWithShowtimes([]);
+      setAllShowtimes([]);
       return;
     }
 
@@ -65,38 +65,24 @@ export const useShowtimes = (movieId: string | null) => {
           .eq('movie_id', movieId)
           .eq('is_active', true)
           .gte('show_date', new Date().toISOString().split('T')[0])
+          .order('show_date', { ascending: true })
           .order('show_time', { ascending: true });
 
         if (fetchError) throw fetchError;
 
-        // Group showtimes by theater
-        const theaterMap = new Map<string, TheaterWithShowtimes>();
+        const showtimes: Showtime[] = data?.map((showtime: any) => ({
+          id: showtime.id,
+          movie_id: showtime.movie_id,
+          theater_id: showtime.theater_id,
+          show_date: showtime.show_date,
+          show_time: showtime.show_time,
+          available_seats: showtime.available_seats,
+          price: showtime.price,
+          is_active: showtime.is_active,
+          theater: showtime.theaters as Theater,
+        })) || [];
 
-        data?.forEach((showtime: any) => {
-          const theater = showtime.theaters as Theater;
-          const showtimeData: Showtime = {
-            id: showtime.id,
-            movie_id: showtime.movie_id,
-            theater_id: showtime.theater_id,
-            show_date: showtime.show_date,
-            show_time: showtime.show_time,
-            available_seats: showtime.available_seats,
-            price: showtime.price,
-            is_active: showtime.is_active,
-            theater,
-          };
-
-          if (theaterMap.has(theater.id)) {
-            theaterMap.get(theater.id)!.showtimes.push(showtimeData);
-          } else {
-            theaterMap.set(theater.id, {
-              theater,
-              showtimes: [showtimeData],
-            });
-          }
-        });
-
-        setTheatersWithShowtimes(Array.from(theaterMap.values()));
+        setAllShowtimes(showtimes);
       } catch (err: any) {
         console.error('Error fetching showtimes:', err);
         setError(err.message);
@@ -129,5 +115,40 @@ export const useShowtimes = (movieId: string | null) => {
     };
   }, [movieId]);
 
-  return { theatersWithShowtimes, loading, error };
+  // Get unique available dates
+  const availableDates = useMemo(() => {
+    const dates = new Set<string>();
+    allShowtimes.forEach((showtime) => {
+      dates.add(showtime.show_date);
+    });
+    return Array.from(dates).sort();
+  }, [allShowtimes]);
+
+  // Filter showtimes by selected date and group by theater
+  const theatersWithShowtimes = useMemo(() => {
+    const dateToFilter = selectedDate || availableDates[0] || null;
+    if (!dateToFilter) return [];
+
+    const filteredShowtimes = allShowtimes.filter(
+      (showtime) => showtime.show_date === dateToFilter
+    );
+
+    // Group by theater
+    const theaterMap = new Map<string, TheaterWithShowtimes>();
+
+    filteredShowtimes.forEach((showtime) => {
+      if (theaterMap.has(showtime.theater.id)) {
+        theaterMap.get(showtime.theater.id)!.showtimes.push(showtime);
+      } else {
+        theaterMap.set(showtime.theater.id, {
+          theater: showtime.theater,
+          showtimes: [showtime],
+        });
+      }
+    });
+
+    return Array.from(theaterMap.values());
+  }, [allShowtimes, selectedDate, availableDates]);
+
+  return { theatersWithShowtimes, availableDates, loading, error };
 };
