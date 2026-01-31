@@ -128,6 +128,84 @@ export type Database = {
         }
         Relationships: []
       }
+      showtimes: {
+        Row: {
+          available_seats: number
+          created_at: string
+          id: string
+          is_active: boolean | null
+          movie_id: string
+          price: number
+          show_date: string
+          show_time: string
+          theater_id: string
+        }
+        Insert: {
+          available_seats?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          movie_id: string
+          price?: number
+          show_date?: string
+          show_time: string
+          theater_id: string
+        }
+        Update: {
+          available_seats?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          movie_id?: string
+          price?: number
+          show_date?: string
+          show_time?: string
+          theater_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showtimes_movie_id_fkey"
+            columns: ["movie_id"]
+            isOneToOne: false
+            referencedRelation: "movies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showtimes_theater_id_fkey"
+            columns: ["theater_id"]
+            isOneToOne: false
+            referencedRelation: "theaters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      theaters: {
+        Row: {
+          address: string | null
+          amenities: string[] | null
+          created_at: string
+          id: string
+          location: string
+          name: string
+        }
+        Insert: {
+          address?: string | null
+          amenities?: string[] | null
+          created_at?: string
+          id?: string
+          location: string
+          name: string
+        }
+        Update: {
+          address?: string | null
+          amenities?: string[] | null
+          created_at?: string
+          id?: string
+          location?: string
+          name?: string
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           created_at: string
