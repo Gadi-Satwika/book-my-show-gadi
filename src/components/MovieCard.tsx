@@ -1,18 +1,19 @@
 import { Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Movie } from "@/types/movie";
+import { Movie } from "@/hooks/useMovies";
 
 interface MovieCardProps {
   movie: Movie;
+  onBookClick: (movie: Movie) => void;
 }
 
-const MovieCard = ({ movie }: MovieCardProps) => {
+const MovieCard = ({ movie, onBookClick }: MovieCardProps) => {
   return (
     <div className="group cursor-pointer animate-fade-in">
       {/* Poster Container */}
       <div className="relative aspect-[2/3] rounded-lg overflow-hidden mb-3 card-shadow transition-all duration-300 group-hover:elevated-shadow group-hover:scale-[1.02]">
         <img
-          src={movie.poster}
+          src={movie.poster_url || '/placeholder.svg'}
           alt={movie.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
@@ -39,14 +40,20 @@ const MovieCard = ({ movie }: MovieCardProps) => {
 
         {/* Book Button - Visible on Hover */}
         <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-          <button className="w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-md transition-colors">
+          <button 
+            className="w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-md transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onBookClick(movie);
+            }}
+          >
             {movie.rating > 0 ? "Book Tickets" : "Notify Me"}
           </button>
         </div>
       </div>
 
       {/* Movie Info */}
-      <div className="space-y-1">
+      <div className="space-y-1" onClick={() => onBookClick(movie)}>
         <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
           {movie.title}
         </h3>
@@ -55,7 +62,7 @@ const MovieCard = ({ movie }: MovieCardProps) => {
         </p>
         {movie.rating > 0 && (
           <p className="text-xs text-muted-foreground">
-            {movie.votes} votes
+            {movie.votes.toLocaleString()} votes
           </p>
         )}
       </div>
